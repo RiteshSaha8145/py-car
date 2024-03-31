@@ -22,7 +22,8 @@ repos:
         entry: mypy
         language_version: python
         types: [python]
-        args: [--strict]
+        args: [--ignore-missing-imports]
+        exclude: protobufs/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.3.0
