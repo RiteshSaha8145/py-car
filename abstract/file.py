@@ -1,11 +1,13 @@
-from abc import ABC, abstractmethod
+from collections.abc import Iterator
 
 
-class File(ABC):
-    @abstractmethod
-    def __iter__(self):
-        ...
+class File(Iterator):
+    """
+    An abstract base class representing a generic file.
 
-    @abstractmethod
-    def __next__(self):
-        ...
+    This class defines the interface for working with files in a generic way.
+    The abstract method, `__next__`, must be implemented by concrete
+    subclasses to define file iteration behavior.
+    """
+
+    ...
