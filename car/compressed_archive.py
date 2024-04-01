@@ -14,6 +14,19 @@ class CARv1Reader(AbstractContextManager):
 
 
 class CARv1Writer(AbstractContextManager):
+    """
+    Context manager for writing data to a CARv1 file.
+
+    Args:
+        file (BinaryFile): The binary file object to write to.
+        name (str): The name of the CARv1 file to create.
+
+    Attributes:
+        file (BinaryFile): The binary file object being written to.
+        name (str): The name of the CARv1 file being created.
+        bufferedWriter (BinaryIO): The buffered writer for the CARv1 file.
+    """
+
     def __init__(self, file: BinaryFile, name: str):
         self.file = file
         self.name = name
@@ -26,20 +39,57 @@ class CARv1Writer(AbstractContextManager):
         traceback: Optional[TracebackType],
         /,
     ) -> Optional[bool]:
+        """
+        Exit the context manager and close the buffered writer.
+
+        Args:
+            exc_type (Optional[Type[BaseException]]): The type of the exception, if any.
+            exc_value (Optional[BaseException]): The exception value, if any.
+            traceback (Optional[TracebackType]): The traceback, if any.
+
+        Returns:
+                Optional[bool]: True if the buffered writer was closed successfully, False otherwise.
+        """
         if self.bufferedWriter:
             self.bufferedWriter.close()
             return True
         return False
 
     def __gen_cid(self, data: bytes, codec: str):
+        """
+        Generate a CID for the given data.
+
+        Args:
+            data (bytes): The data to calculate the CID for.
+            codec (str): The codec to use for the CID.
+
+        Returns:
+            CID: The generated CID.
+        """
         hash_value: bytes = multihash.digest(data, "sha2-256")
         return CID("base32", version=1, codec=codec, digest=hash_value)
 
     def __get_block(self, cid: CID, data: bytes):
+        """
+        Get a block with the given CID and data.
+
+        Args:
+            cid (CID): The CID for the block.
+            data (bytes): The data for the block.
+
+        Returns:
+            bytes: The block data.
+        """
         cid = bytes(cid)
         return varint.encode(len(cid) + len(data)) + cid + data
 
     def __to_flat_dag(self) -> Tuple[CID, List[PBLink], bytes]:
+        """
+        Convert the file data into a flat DAG structure.
+
+        Returns:
+            Tuple[CID, List[PBLink], bytes]: The root CID, list of links, and root node bytes.
+        """
         links: list = []
         total_size: int = 0
         for i, data in enumerate(self.file):
@@ -65,6 +115,12 @@ class CARv1Writer(AbstractContextManager):
         return (root_cid, links, pbnode)
 
     def to_flat_dag(self) -> CID:
+        """
+        Convert the CARv1 file data to a flat DAG and write it to the buffered writer.
+
+        Returns:
+            CID: The root CID of the flat DAG.
+        """
         self.file.bufferedReader.seek(0)
         root_cid, links, root_node = self.__to_flat_dag()
 
