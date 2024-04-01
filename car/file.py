@@ -9,7 +9,3 @@ class File(ABC):
     @abstractmethod
     def __next__(self):
         ...
-
-    @abstractmethod
-    def encode(self):
-        ...
