@@ -110,7 +110,7 @@ class CARv1Writer(AbstractContextManager):
         pbnode_bytes = pbnode.SerializeToString()
 
         root_cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
-        return (root_cid, links, pbnode)
+        return (root_cid, links, pbnode_bytes)
 
     def to_flat_dag(self) -> CID:
         """
