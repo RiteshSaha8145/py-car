@@ -90,7 +90,7 @@ class CARv1Writer(AbstractContextManager):
             Tuple[CID, List[PBLink], bytes]: The root CID, list of links, and root node bytes.
         """
         links: list = []
-        total_size: int = 0
+        total_sizes: list = []
         for i, data in enumerate(self.file):
             cid = self.__gen_cid(data=data, codec="raw")
             link = PBLink()
@@ -98,12 +98,11 @@ class CARv1Writer(AbstractContextManager):
             link.Name = f"Links/{i}"
             link.Tsize = len(data)
             links.append(link)
-            total_size += len(data)
-            links.append(link)
+            total_sizes.append(len(data))
 
         unixfs = Data()
         unixfs.Type = Data.DataType.File
-        unixfs.blocksizes.extend(total_size)
+        unixfs.blocksizes.extend(total_sizes)
 
         pbnode = PBNode()
         pbnode.Links.extend(links)
