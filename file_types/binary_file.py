@@ -39,5 +39,8 @@ class BinaryFile(File):
             raise StopIteration
         return data
 
-    def reset(self):
+    def reset(self) -> None:
+        """
+        Resets the read position of the BinaryFile object to the beginning of the file.
+        """
         self.bufferedReader.seek(0)
