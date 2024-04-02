@@ -1,4 +1,4 @@
-from ..abstract.file import File
+from abstract.file import File
 from typing import BinaryIO, Optional
 
 
@@ -24,7 +24,7 @@ class BinaryFile(File):
         self.bufferedReader = bufferedReader
         self.chunkSize = chunkSize
 
-    def __iter__(self):
+    def __next__(self):
         """
         Iterates over chunks of binary data from the file.
 

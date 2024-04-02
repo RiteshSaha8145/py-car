@@ -1,6 +1,5 @@
-from ..file_types.binary_file import BinaryFile
-from ..protobufs.ipld_dag_pb2 import PBLink, PBNode
-from ..protobufs.unixfs_pb2 import Data
+from file_types import BinaryFile
+from protobufs import PBNode, PBLink, Data
 from contextlib import AbstractContextManager
 from multiformats import CID, multihash, varint
 from typing import BinaryIO, Optional, Type, Tuple, List
@@ -30,7 +29,7 @@ class CARv1Writer(AbstractContextManager):
     def __init__(self, file: BinaryFile, name: str):
         self.file = file
         self.name = name
-        self.bufferedWriter: BinaryIO = open(name, "rb")
+        self.bufferedWriter: BinaryIO = open(name, "wb")
 
     def __exit__(
         self,
@@ -121,8 +120,8 @@ class CARv1Writer(AbstractContextManager):
         Returns:
             CID: The root CID of the flat DAG.
         """
-        self.file.bufferedReader.seek(0)
         root_cid, links, root_node = self.__to_flat_dag()
+        self.file.bufferedReader.seek(0)
 
         encoded_header = dag_cbor.encode({"roots": [root_cid], "version": 1})
         header = (
