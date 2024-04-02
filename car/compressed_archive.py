@@ -112,7 +112,7 @@ class CARv1Writer(AbstractContextManager):
         root_cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
         return (root_cid, links, pbnode_bytes)
 
-    def to_flat_dag(self) -> CID:
+    def get_flat_car(self) -> CID:
         """
         Convert the CARv1 file data to a flat DAG and write it to the buffered writer.
 
