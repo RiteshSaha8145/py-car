@@ -38,3 +38,6 @@ class BinaryFile(File):
         if not data:
             raise StopIteration
         return data
+
+    def reset(self):
+        self.bufferedReader.seek(0)

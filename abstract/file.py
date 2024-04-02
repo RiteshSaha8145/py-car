@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from abc import abstractmethod
 
 
 class File(Iterator):
@@ -10,4 +11,6 @@ class File(Iterator):
     subclasses to define file iteration behavior.
     """
 
-    ...
+    @abstractmethod
+    def reset(self):
+        ...

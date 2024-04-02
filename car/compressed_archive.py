@@ -120,7 +120,7 @@ class CARv1Writer(AbstractContextManager):
             CID: The root CID of the flat DAG.
         """
         root_cid, links, root_node = self.__to_flat_dag()
-        self.file.bufferedReader.seek(0)
+        self.file.reset()
 
         encoded_header = dag_cbor.encode({"roots": [root_cid], "version": 1})
         header = (
