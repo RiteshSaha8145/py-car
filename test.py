@@ -3,6 +3,5 @@ from file_types import BinaryFile
 
 if __name__ == "__main__":
     with open("sample.html", "rb") as f:
-        b = BinaryFile(f)
-        c = CARv1Writer(b, "test.car")
-        c.to_flat_dag()
+        with CARv1Writer(BinaryFile(f, 262144), "test.car") as c:
+            c.get_flat_car()
