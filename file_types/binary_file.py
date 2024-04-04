@@ -21,8 +21,7 @@ class BinaryFile(File):
             chunkSize (Optional[int], optional): The size of each chunk of data to read
                 from the file. Defaults to 1024 bytes.
         """
-        self.bufferedReader = bufferedReader
-        self.chunkSize = chunkSize
+        super().__init__(bufferedReader=bufferedReader, chunkSize=chunkSize)
 
     def __next__(self):
         """

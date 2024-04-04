@@ -1,4 +1,4 @@
-from file_types import BinaryFile
+from abstract import File
 from protobufs import PBNode, PBLink, Data
 from contextlib import AbstractContextManager
 from multiformats import CID, multihash, varint
@@ -62,7 +62,7 @@ class CARv1Writer(AbstractContextManager):
         bufferedWriter (BinaryIO): The buffered writer for the CARv1 file.
     """
 
-    def __init__(self, file: BinaryFile, name: str):
+    def __init__(self, file: File, name: str):
         self.file = file
         self.name = name
         self.bufferedWriter: BinaryIO = open(name, "wb")
@@ -85,10 +85,8 @@ class CARv1Writer(AbstractContextManager):
         Returns:
                 Optional[bool]: True if the buffered writer was closed successfully, False otherwise.
         """
-        if self.bufferedWriter:
-            self.bufferedWriter.close()
-            return True
-        return False
+        self.bufferedWriter.close()
+        return True
 
     def __gen_cid(self, data: bytes, codec: str):
         """
