@@ -2,10 +2,12 @@ from abstract import File
 from protobufs import PBNode, PBLink, Data
 from contextlib import AbstractContextManager
 from multiformats import CID, multihash, varint
-from typing import BinaryIO, Optional, Type, Tuple, List
+from typing import BinaryIO, Optional, Type, Tuple, List, Generator
 from types import TracebackType
 import dag_cbor
 from collections.abc import Iterator
+import tempfile
+import shutil
 
 
 class CARv1Reader(AbstractContextManager, Iterator):
@@ -62,10 +64,11 @@ class CARv1Writer(AbstractContextManager):
         bufferedWriter (BinaryIO): The buffered writer for the CARv1 file.
     """
 
-    def __init__(self, file: File, name: str):
+    def __init__(self, file: File, name: str, unixfs: bool = False):
         self.file = file
         self.name = name
         self.bufferedWriter: BinaryIO = open(name, "wb")
+        self.unixfs = unixfs
 
     def __exit__(
         self,
@@ -88,7 +91,7 @@ class CARv1Writer(AbstractContextManager):
         self.bufferedWriter.close()
         return True
 
-    def __gen_cid(self, data: bytes, codec: str):
+    def __gen_cid(self, data: bytes, codec: str) -> CID:
         """
         Generate a CID for the given data.
 
@@ -102,7 +105,7 @@ class CARv1Writer(AbstractContextManager):
         hash_value: bytes = multihash.digest(data, "sha2-256")
         return CID("base32", version=1, codec=codec, digest=hash_value)
 
-    def __get_block(self, cid: CID, data: bytes):
+    def __get_block(self, cid: CID, data: bytes) -> bytes:
         """
         Get a block with the given CID and data.
 
@@ -115,6 +118,72 @@ class CARv1Writer(AbstractContextManager):
         """
         cid = bytes(cid)
         return varint.encode(len(cid) + len(data)) + cid + data
+
+    def __get_raw_node(self) -> Generator[Tuple[bytes, CID], None, None]:
+        for raw_data in self.file:
+
+            codec, block = "raw", raw_data
+            if self.unixfs:
+                unixfs_block = Data()
+                unixfs_block.Type = Data.DataType.Raw
+                unixfs_block.Data = raw_data
+                unixfs_block.blocksizes.extend([len(raw_data)])
+
+                pbnode = PBNode()
+                pbnode.Data = unixfs_block.SerializeToString()
+
+                codec, block = "dag-pb", pbnode.SerializeToString()
+
+            cid = self.__gen_cid(data=block, codec=codec)
+            block = self.__get_block(cid=cid, data=block)
+
+            self.bufferedWriter.write(block)
+
+            yield (block, cid)
+
+    def __get_file_node(self) -> Generator[Tuple[bytes, CID], None, None]:
+        unixfs = Data()
+        unixfs.Type = Data.DataType.File
+
+        pbnode = PBNode()
+        for i, block in enumerate(self.__get_raw_node()):
+            data, cid = block
+
+            link = PBLink()
+            link.Hash = bytes(cid)
+            link.Name = f"Links{i}"
+            link.Tsize = len(data)
+
+            pbnode.Links.extend([link])
+            unixfs.blocksizes.extend([len(data)])
+
+        pbnode.Data = unixfs.SerializeToString()
+        pbnode_bytes = pbnode.SerializeToString()
+
+        cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
+        pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
+        self.bufferedWriter.write(pbnode_block)
+
+        yield (pbnode_block, cid)
+
+    def get_car(self) -> CID:
+        cid = [cid for _, cid in self.__get_file_node()][0]
+        encoded_root_node = dag_cbor.encode({"roots": [cid], "version": 1})
+        header = varint.encode(len(encoded_root_node)) + encoded_root_node
+        self.bufferedWriter.flush()
+
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as tmp_file:
+            tmp_file.write(header)
+
+            with open(self.name, "rb") as original_file:
+                while True:
+                    data = original_file.read(self.file.chunkSize)
+                    if not data:
+                        break
+                    tmp_file.write(data)
+
+        shutil.move(tmp_file.name, self.name)
+        return cid
 
     def __to_flat_dag(self) -> Tuple[CID, List[PBLink], bytes]:
         """
