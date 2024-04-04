@@ -134,7 +134,7 @@ class CARv1Writer(AbstractContextManager):
 
                 codec, block = "dag-pb", pbnode.SerializeToString()
 
-            cid = self.__gen_cid(data=block, codec=codec)
+            cid: CID = self.__gen_cid(data=block, codec=codec)
             block = self.__get_block(cid=cid, data=block)
 
             self.bufferedWriter.write(block)
@@ -142,14 +142,14 @@ class CARv1Writer(AbstractContextManager):
             yield (block, cid)
 
     def __get_file_node(self) -> Generator[Tuple[bytes, CID], None, None]:
-        unixfs = Data()
+        unixfs: Data = Data()
         unixfs.Type = Data.DataType.File
 
-        pbnode = PBNode()
+        pbnode: PBNode = PBNode()
         for i, block in enumerate(self.__get_raw_node()):
             data, cid = block
 
-            link = PBLink()
+            link: PBLink = PBLink()
             link.Hash = bytes(cid)
             link.Name = f"Links{i}"
             link.Tsize = len(data)
@@ -163,7 +163,6 @@ class CARv1Writer(AbstractContextManager):
         cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
         pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
         self.bufferedWriter.write(pbnode_block)
-
         yield (pbnode_block, cid)
 
     def get_car(self) -> CID:
