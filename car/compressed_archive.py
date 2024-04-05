@@ -141,7 +141,9 @@ class CARv1Writer(AbstractContextManager):
 
             yield (block, cid)
 
-    def __get_file_node(self) -> Generator[Tuple[bytes, CID], None, None]:
+    def __get_file_node(
+        self, max_children: int = 1024
+    ) -> Generator[Tuple[bytes, CID], None, None]:
         unixfs: Data = Data()
         unixfs.Type = Data.DataType.File
 
@@ -157,13 +159,30 @@ class CARv1Writer(AbstractContextManager):
             pbnode.Links.extend([link])
             unixfs.blocksizes.extend([len(data)])
 
-        pbnode.Data = unixfs.SerializeToString()
-        pbnode_bytes = pbnode.SerializeToString()
+            if (i + 1) % max_children == 0:
+                pbnode.Data = unixfs.SerializeToString()
+                pbnode_bytes = pbnode.SerializeToString()
 
-        cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
-        pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
-        self.bufferedWriter.write(pbnode_block)
-        yield (pbnode_block, cid)
+                cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
+                pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
+                self.bufferedWriter.write(pbnode_block)
+                yield (pbnode_block, cid)
+
+                pbnode = PBNode()
+                unixfs = Data()
+                unixfs.Type = Data.DataType.File
+
+        if len(pbnode.Links) > 0:
+            pbnode.Data = unixfs.SerializeToString()
+            pbnode_bytes = pbnode.SerializeToString()
+
+            cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
+            pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
+            self.bufferedWriter.write(pbnode_block)
+            yield (pbnode_block, cid)
+
+    def __get_root_node(self, max_children: int = 1024) -> CID:
+        ...
 
     def get_car(self) -> CID:
         cid = [cid for _, cid in self.__get_file_node()][0]
