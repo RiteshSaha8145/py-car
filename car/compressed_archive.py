@@ -8,6 +8,8 @@ import dag_cbor
 from collections.abc import Iterator
 import tempfile
 import shutil
+from itertools import islice
+from math import log, ceil
 
 
 class CARv1Reader(AbstractContextManager, Iterator):
@@ -148,8 +150,7 @@ class CARv1Writer(AbstractContextManager):
         unixfs.Type = Data.DataType.File
 
         pbnode: PBNode = PBNode()
-        for i, block in enumerate(self.__get_raw_node()):
-            data, cid = block
+        for i, (data, cid) in enumerate(self.__get_raw_node()):
 
             link: PBLink = PBLink()
             link.Hash = bytes(cid)
@@ -182,10 +183,42 @@ class CARv1Writer(AbstractContextManager):
             yield (pbnode_block, cid)
 
     def __get_root_node(self, max_children: int = 1024) -> CID:
-        ...
+        parents = [
+            (len(block), cid) for block, cid in self.__get_file_node(max_children)
+        ]
+        layers = int(ceil(log(len(parents), max_children)))
+
+        for layer in range(layers):
+            new_parents = []
+            for starting_index in range(0, len(parents), max_children):
+                pbnode = PBNode()
+                unixfs = Data()
+                unixfs.Type = Data.DataType.File
+                for i, (size, cid) in enumerate(
+                    islice(parents, starting_index, max_children + starting_index)
+                ):
+                    link = PBLink()
+                    link.Hash = bytes(cid)
+                    link.Name = f"File_{layer}_{i}"
+                    link.Tsize = size
+
+                    pbnode.Links.extend([link])
+                    unixfs.blocksizes.extend([size])
+
+                pbnode.Data = unixfs.SerializeToString()
+                pbnode_bytes = pbnode.SerializeToString()
+
+                new_cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
+                pbnode_block = self.__get_block(cid=new_cid, data=pbnode_bytes)
+                self.bufferedWriter.write(pbnode_block)
+                new_parents.append((len(pbnode_block), new_cid))
+
+            parents = new_parents
+
+        return parents[0][1]
 
     def get_car(self) -> CID:
-        cid = [cid for _, cid in self.__get_file_node()][0]
+        cid = self.__get_root_node(max_children=11)
         encoded_root_node = dag_cbor.encode({"roots": [cid], "version": 1})
         header = varint.encode(len(encoded_root_node)) + encoded_root_node
         self.bufferedWriter.flush()
