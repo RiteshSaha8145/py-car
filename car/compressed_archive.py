@@ -217,8 +217,8 @@ class CARv1Writer(AbstractContextManager):
 
         return parents[0][1]
 
-    def get_car(self) -> CID:
-        cid = self.__get_root_node(max_children=11)
+    def get_car(self, max_children: int = 1024) -> CID:
+        cid = self.__get_root_node(max_children=max_children)
         encoded_root_node = dag_cbor.encode({"roots": [cid], "version": 1})
         header = varint.encode(len(encoded_root_node)) + encoded_root_node
         self.bufferedWriter.flush()
