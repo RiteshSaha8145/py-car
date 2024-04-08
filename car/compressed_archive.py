@@ -2,12 +2,11 @@ from abstract import File
 from protobufs import PBNode, PBLink, Data
 from contextlib import AbstractContextManager
 from multiformats import CID, multihash, varint
-from typing import BinaryIO, Optional, Type, Tuple, List, Generator
+from typing import BinaryIO, Optional, Type, Tuple, Generator
 from types import TracebackType
 import dag_cbor
 from collections.abc import Iterator
-import tempfile
-import shutil
+from utils import prepend_data_to_file
 from itertools import islice
 from math import log, ceil
 
@@ -121,6 +120,17 @@ class CARv1Writer(AbstractContextManager):
         cid = bytes(cid)
         return varint.encode(len(cid) + len(data)) + cid + data
 
+    def __serialize_and_write_pbnode(
+        self, pbnode: PBNode, unixfs: Data
+    ) -> Tuple[bytes, CID]:
+        pbnode.Data = unixfs.SerializeToString()
+        pbnode_bytes = pbnode.SerializeToString()
+
+        cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
+        pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
+        self.bufferedWriter.write(pbnode_block)
+        return (pbnode_block, cid)
+
     def __get_raw_node(self) -> Generator[Tuple[bytes, CID], None, None]:
         for raw_data in self.file:
 
@@ -146,10 +156,13 @@ class CARv1Writer(AbstractContextManager):
     def __get_file_node(
         self, max_children: int = 1024
     ) -> Generator[Tuple[bytes, CID], None, None]:
-        unixfs: Data = Data()
-        unixfs.Type = Data.DataType.File
+        def get_pbnode():
+            pbnode: PBNode = PBNode()
+            unixfs: Data = Data()
+            unixfs.Type = Data.DataType.File
+            return (pbnode, unixfs)
 
-        pbnode: PBNode = PBNode()
+        pbnode, unixfs = get_pbnode()
         for i, (data, cid) in enumerate(self.__get_raw_node()):
 
             link: PBLink = PBLink()
@@ -161,25 +174,16 @@ class CARv1Writer(AbstractContextManager):
             unixfs.blocksizes.extend([len(data)])
 
             if (i + 1) % max_children == 0:
-                pbnode.Data = unixfs.SerializeToString()
-                pbnode_bytes = pbnode.SerializeToString()
-
-                cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
-                pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
-                self.bufferedWriter.write(pbnode_block)
+                pbnode_block, cid = self.__serialize_and_write_pbnode(
+                    pbnode=pbnode, unixfs=unixfs
+                )
                 yield (pbnode_block, cid)
-
-                pbnode = PBNode()
-                unixfs = Data()
-                unixfs.Type = Data.DataType.File
+                pbnode, unixfs = get_pbnode()
 
         if len(pbnode.Links) > 0:
-            pbnode.Data = unixfs.SerializeToString()
-            pbnode_bytes = pbnode.SerializeToString()
-
-            cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
-            pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
-            self.bufferedWriter.write(pbnode_block)
+            pbnode_block, cid = self.__serialize_and_write_pbnode(
+                pbnode=pbnode, unixfs=unixfs
+            )
             yield (pbnode_block, cid)
 
     def __get_root_node(self, max_children: int = 1024) -> CID:
@@ -222,70 +226,5 @@ class CARv1Writer(AbstractContextManager):
         encoded_root_node = dag_cbor.encode({"roots": [cid], "version": 1})
         header = varint.encode(len(encoded_root_node)) + encoded_root_node
         self.bufferedWriter.flush()
-
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False) as tmp_file:
-            tmp_file.write(header)
-
-            with open(self.name, "rb") as original_file:
-                while True:
-                    data = original_file.read(self.file.chunkSize)
-                    if not data:
-                        break
-                    tmp_file.write(data)
-
-        shutil.move(tmp_file.name, self.name)
+        prepend_data_to_file(file_name=self.name, data=header)
         return cid
-
-    def __to_flat_dag(self) -> Tuple[CID, List[PBLink], bytes]:
-        """
-        Convert the file data into a flat DAG structure.
-
-        Returns:
-            Tuple[CID, List[PBLink], bytes]: The root CID, list of links, and root node bytes.
-        """
-        links: list = []
-        total_sizes: list = []
-        for i, data in enumerate(self.file):
-            cid = self.__gen_cid(data=data, codec="raw")
-            link = PBLink()
-            link.Hash = bytes(cid)
-            link.Name = f"Links/{i}"
-            link.Tsize = len(data)
-            links.append(link)
-            total_sizes.append(len(data))
-
-        unixfs = Data()
-        unixfs.Type = Data.DataType.File
-        unixfs.blocksizes.extend(total_sizes)
-
-        pbnode = PBNode()
-        pbnode.Links.extend(links)
-        pbnode.Data = unixfs.SerializeToString()
-        pbnode_bytes = pbnode.SerializeToString()
-
-        root_cid = self.__gen_cid(data=pbnode_bytes, codec="dag-pb")
-        return (root_cid, links, pbnode_bytes)
-
-    def get_flat_car(self) -> CID:
-        """
-        Convert the CARv1 file data to a flat DAG and write it to the buffered writer.
-
-        Returns:
-            CID: The root CID of the flat DAG.
-        """
-        root_cid, links, root_node = self.__to_flat_dag()
-        self.file.reset()
-
-        encoded_header = dag_cbor.encode({"roots": [root_cid], "version": 1})
-        header = (
-            varint.encode(len(encoded_header))
-            + encoded_header
-            + self.__get_block(root_cid, root_node)
-        )
-
-        self.bufferedWriter.write(header)
-
-        for i, data in enumerate(self.file):
-            block = self.__get_block(cid=links[i].Hash, data=data)
-            self.bufferedWriter.write(block)
-        return root_cid
