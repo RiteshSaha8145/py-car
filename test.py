@@ -2,6 +2,6 @@ from car import CARv1Writer
 from file_types import BinaryFile
 
 if __name__ == "__main__":
-    with open("requirements.txt", "rb") as f:
-        c = CARv1Writer(BinaryFile(bufferedReader=f, chunkSize=1), "test2.car")
-        c.get_car(max_children=5)
+    with open("dna.txt", "rb") as f:
+        with CARv1Writer(BinaryFile(bufferedReader=f, chunkSize=1), "test.car") as c:
+            c.get_car(max_children=50000)

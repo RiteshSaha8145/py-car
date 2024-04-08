@@ -58,11 +58,13 @@ class CARv1Writer(AbstractContextManager):
     Args:
         file (BinaryFile): The binary file object to write to.
         name (str): The name of the CARv1 file to create.
+        unixfs (bool): Flag indicating whether to use UnixFS format.
 
     Attributes:
         file (BinaryFile): The binary file object being written to.
         name (str): The name of the CARv1 file being created.
         bufferedWriter (BinaryIO): The buffered writer for the CARv1 file.
+        unixfs (bool): Flag indicating whether to use UnixFS format.
     """
 
     def __init__(self, file: File, name: str, unixfs: bool = False):
@@ -123,6 +125,16 @@ class CARv1Writer(AbstractContextManager):
     def __serialize_and_write_pbnode(
         self, pbnode: PBNode, unixfs: Data
     ) -> Tuple[bytes, CID]:
+        """
+        Serialize a PBNode and UnixFS Data object, then write to the CARv1 file.
+
+        Args:
+            pbnode (PBNode): The PBNode object to serialize.
+            unixfs (Data): The UnixFS Data object to serialize.
+
+        Returns:
+            Tuple[bytes, CID]: The block data and CID of the serialized node.
+        """
         pbnode.Data = unixfs.SerializeToString()
         pbnode_bytes = pbnode.SerializeToString()
 
@@ -132,6 +144,12 @@ class CARv1Writer(AbstractContextManager):
         return (pbnode_block, cid)
 
     def __get_raw_node(self) -> Generator[Tuple[bytes, CID], None, None]:
+        """
+        Generate raw node blocks from the input file.
+
+        Yields:
+            Generator[Tuple[bytes, CID], None, None]: Generator of block data and CIDs.
+        """
         for raw_data in self.file:
 
             codec, block = "raw", raw_data
@@ -156,6 +174,16 @@ class CARv1Writer(AbstractContextManager):
     def __get_file_node(
         self, max_children: int = 1024
     ) -> Generator[Tuple[bytes, CID], None, None]:
+        """
+        Generate file node blocks from raw node blocks.
+
+        Args:
+            max_children (int, optional): Maximum number of children per node. Defaults to 1024.
+
+        Yields:
+            Generator[Tuple[bytes, CID], None, None]: Generator of block data and CIDs.
+        """
+
         def get_pbnode():
             pbnode: PBNode = PBNode()
             unixfs: Data = Data()
@@ -187,6 +215,15 @@ class CARv1Writer(AbstractContextManager):
             yield (pbnode_block, cid)
 
     def __get_root_node(self, max_children: int = 1024) -> CID:
+        """
+        Generate the root node by building layers of file nodes.
+
+        Args:
+            max_children (int, optional): Maximum number of children per node. Defaults to 1024.
+
+        Returns:
+            CID: The CID of the root node.
+        """
         parents = [
             (len(block), cid) for block, cid in self.__get_file_node(max_children)
         ]
@@ -222,6 +259,15 @@ class CARv1Writer(AbstractContextManager):
         return parents[0][1]
 
     def get_car(self, max_children: int = 1024) -> CID:
+        """
+        Generate the CARv1 file with the given maximum number of children per node.
+
+        Args:
+            max_children (int, optional): Maximum number of children per node. Defaults to 1024.
+
+        Returns:
+            CID: The CID of the root node.
+        """
         cid = self.__get_root_node(max_children=max_children)
         encoded_root_node = dag_cbor.encode({"roots": [cid], "version": 1})
         header = varint.encode(len(encoded_root_node)) + encoded_root_node
