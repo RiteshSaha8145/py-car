@@ -70,6 +70,15 @@ class CARv1Writer(AbstractContextManager):
     def __init__(
         self, file: File, name: str, unixfs: bool = False, max_children: int = 1024
     ):
+        """
+        Initializes a CARv1Writer object.
+
+        Args:
+            file (BinaryFile): The binary file object to write to.
+            name (str): The name of the CARv1 file to create.
+            unixfs (bool, optional): Flag indicating whether to use UnixFS format. Defaults to False.
+            max_children (int, optional): Maximum number of children per node. Defaults to 1024.
+        """
         self.file = file
         self.name = name
         self.bufferedWriter: BinaryIO = open(name, "wb")
@@ -126,12 +135,32 @@ class CARv1Writer(AbstractContextManager):
         return varint.encode(len(cid) + len(data)) + cid + data
 
     def __get_pbnode(self, dtype: Data.DataType) -> Tuple[PBNode, Data]:
+        """
+        Create a PBNode and corresponding UnixFS Data object.
+
+        Args:
+            dtype (Data.DataType): The data type for the PBNode.
+
+        Returns:
+            Tuple[PBNode, Data]: A tuple containing the PBNode and UnixFS Data objects.
+        """
         pbnode: PBNode = PBNode()
         unixfs: Data = Data()
         unixfs.Type = dtype
         return (pbnode, unixfs)
 
     def __get_pblink(self, cid: CID, name: str, size: int) -> PBLink:
+        """
+        Create a PBLink object.
+
+        Args:
+            cid (CID): The CID for the link.
+            name (str): The name of the link.
+            size (int): The size of the linked data.
+
+        Returns:
+            PBLink: The PBLink object.
+        """
         pblink = PBLink()
         pblink.Hash = bytes(cid)
         pblink.Name = name
@@ -147,6 +176,7 @@ class CARv1Writer(AbstractContextManager):
         Args:
             pbnode (PBNode): The PBNode object to serialize.
             unixfs (Data): The UnixFS Data object to serialize.
+            codec (str, optional): The codec to use for serialization. Defaults to "dag-pb".
 
         Returns:
             Tuple[bytes, CID]: The block data and CID of the serialized node.
@@ -185,10 +215,7 @@ class CARv1Writer(AbstractContextManager):
 
     def __get_intermediate_node(self) -> Generator[Tuple[bytes, CID], None, None]:
         """
-        Generate file node blocks from raw node blocks.
-
-        Args:
-            max_children (int, optional): Maximum number of children per node. Defaults to 1024.
+        Generate intermediate file node blocks from raw node blocks.
 
         Yields:
             Generator[Tuple[bytes, CID], None, None]: Generator of block data and CIDs.
@@ -217,11 +244,8 @@ class CARv1Writer(AbstractContextManager):
         """
         Generate the root node by building layers of file nodes.
 
-        Args:
-            max_children (int, optional): Maximum number of children per node. Defaults to 1024.
-
         Returns:
-            CID: The CID of the root node.
+            Tuple[CID, int]: The CID of the root node and the number of layers.
         """
         parents = [(len(block), cid) for block, cid in self.__get_intermediate_node()]
         layers = int(ceil(log(len(parents), self.max_children)))
@@ -250,6 +274,12 @@ class CARv1Writer(AbstractContextManager):
         return parents[0][1]
 
     def __get_file_node(self) -> CID:
+        """
+        Get the root node for the CARv1 file.
+
+        Returns:
+            CID: The CID of the root node.
+        """
         file_cid = self.__build_dag()
         size = self.file.bufferedReader.tell()
         pbnode, unixfs = self.__get_pbnode(dtype=Data.DataType.File)
@@ -264,9 +294,6 @@ class CARv1Writer(AbstractContextManager):
     def get_car(self) -> CID:
         """
         Generate the CARv1 file with the given maximum number of children per node.
-
-        Args:
-            max_children (int, optional): Maximum number of children per node. Defaults to 1024.
 
         Returns:
             CID: The CID of the root node.

@@ -9,13 +9,14 @@ class BinaryFile(File):
 
     Attributes:
         bufferedReader (BinaryIO): The binary input stream representing the file.
-        chunkSize (Optional[int]): The size of each chunk of data to read.
+        chunkSize (int): The size of each chunk of data to read.
+        metadata (Optional[dict]): Metadata associated with the file.
     """
 
     def __init__(
         self,
         bufferedReader: BinaryIO,
-        chunkSize: Optional[int] = 1024,
+        chunkSize: int = 1024,
         metadata: Optional[dict] = None,
     ):
         """
@@ -25,12 +26,14 @@ class BinaryFile(File):
             bufferedReader (BinaryIO): A binary input stream representing the file.
             chunkSize (Optional[int], optional): The size of each chunk of data to read
                 from the file. Defaults to 1024 bytes.
+            metadata (Optional[dict], optional): Metadata associated with the file.
+                Defaults to None.
         """
         super().__init__(
             bufferedReader=bufferedReader, chunkSize=chunkSize, metadata=metadata
         )
 
-    def __next__(self):
+    def __next__(self) -> bytes:
         """
         Iterates over chunks of binary data from the file.
 
