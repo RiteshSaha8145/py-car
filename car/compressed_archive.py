@@ -67,11 +67,14 @@ class CARv1Writer(AbstractContextManager):
         unixfs (bool): Flag indicating whether to use UnixFS format.
     """
 
-    def __init__(self, file: File, name: str, unixfs: bool = False):
+    def __init__(
+        self, file: File, name: str, unixfs: bool = False, max_children: int = 1024
+    ):
         self.file = file
         self.name = name
         self.bufferedWriter: BinaryIO = open(name, "wb")
         self.unixfs = unixfs
+        self.max_children = max_children
 
     def __exit__(
         self,
@@ -180,9 +183,7 @@ class CARv1Writer(AbstractContextManager):
 
             yield (block, cid)
 
-    def __get_intermediate_node(
-        self, max_children: int = 1024
-    ) -> Generator[Tuple[bytes, CID], None, None]:
+    def __get_intermediate_node(self) -> Generator[Tuple[bytes, CID], None, None]:
         """
         Generate file node blocks from raw node blocks.
 
@@ -199,7 +200,7 @@ class CARv1Writer(AbstractContextManager):
             pbnode.Links.extend([link])
             unixfs.blocksizes.extend([len(data)])
 
-            if (i + 1) % max_children == 0:
+            if (i + 1) % self.max_children == 0:
                 pbnode_block, cid = self.__serialize_and_write_pbnode(
                     pbnode=pbnode, unixfs=unixfs
                 )
@@ -212,7 +213,7 @@ class CARv1Writer(AbstractContextManager):
             )
             yield (pbnode_block, cid)
 
-    def __get_file_node(self, max_children: int = 1024) -> CID:
+    def __build_dag(self) -> Tuple[CID, int]:
         """
         Generate the root node by building layers of file nodes.
 
@@ -222,18 +223,15 @@ class CARv1Writer(AbstractContextManager):
         Returns:
             CID: The CID of the root node.
         """
-        parents = [
-            (len(block), cid)
-            for block, cid in self.__get_intermediate_node(max_children)
-        ]
-        layers = int(ceil(log(len(parents), max_children)))
+        parents = [(len(block), cid) for block, cid in self.__get_intermediate_node()]
+        layers = int(ceil(log(len(parents), self.max_children)))
 
         for layer in range(layers):
             new_parents = []
-            for starting_index in range(0, len(parents), max_children):
+            for starting_index in range(0, len(parents), self.max_children):
                 pbnode, unixfs = self.__get_pbnode(dtype=Data.DataType.File)
                 for i, (size, cid) in enumerate(
-                    islice(parents, starting_index, max_children + starting_index)
+                    islice(parents, starting_index, self.max_children + starting_index)
                 ):
                     link = self.__get_pblink(
                         cid=cid, name=f"File_Layer:{layer}:Chunk{i}", size=size
@@ -251,7 +249,19 @@ class CARv1Writer(AbstractContextManager):
 
         return parents[0][1]
 
-    def get_car(self, max_children: int = 1024) -> CID:
+    def __get_file_node(self) -> CID:
+        file_cid = self.__build_dag()
+        size = self.file.bufferedReader.tell()
+        pbnode, unixfs = self.__get_pbnode(dtype=Data.DataType.File)
+        link = self.__get_pblink(
+            cid=file_cid, name=self.file.metadata["name"], size=size
+        )
+        pbnode.Links.extend([link])
+        unixfs.blocksizes.extend([size])
+        _, root_cid = self.__serialize_and_write_pbnode(pbnode=pbnode, unixfs=unixfs)
+        return root_cid
+
+    def get_car(self) -> CID:
         """
         Generate the CARv1 file with the given maximum number of children per node.
 
@@ -261,7 +271,7 @@ class CARv1Writer(AbstractContextManager):
         Returns:
             CID: The CID of the root node.
         """
-        cid = self.__get_file_node(max_children=max_children)
+        cid = self.__get_file_node()
         encoded_root_node = dag_cbor.encode({"roots": [cid], "version": 1})
         header = varint.encode(len(encoded_root_node)) + encoded_root_node
         self.bufferedWriter.flush()

@@ -12,9 +12,15 @@ class File(Iterator):
     subclasses to define file iteration behavior.
     """
 
-    def __init__(self, bufferedReader: BinaryIO, chunkSize: Optional[int]):
+    def __init__(
+        self,
+        bufferedReader: BinaryIO,
+        chunkSize: Optional[int],
+        metadata: Optional[dict],
+    ):
         self.bufferedReader = bufferedReader
         self.chunkSize = chunkSize
+        self.metadata = metadata
 
     @abstractmethod
     def reset(self):
