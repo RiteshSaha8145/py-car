@@ -1,5 +1,6 @@
 import dag_cbor
 from protobufs import PBNode
+from multiformats import CID
 
 
 def read_varint(f):
@@ -31,14 +32,20 @@ if __name__ == "__main__":
         header = dag_cbor.decode(header_bytes)
 
         r = header["roots"][0]
-
         print(r)
-
         root_size = read_varint(f)
         root_block = f.read(root_size)
-        print(root_size)
-
-        root_node = PBNode()
-        root_node.ParseFromString(root_block)
-
-        # print(root_node)
+        while root_block:
+            try:
+                cid = root_block[: len(bytes(r))]
+                block = root_block[len(bytes(r)) :]
+                pbnode = PBNode()
+                print(CID.decode(cid))
+                pbnode.ParseFromString(block)
+                root_size = read_varint(f)
+                # print(pbnode)
+            except Exception as e:
+                print(e)
+                continue
+            finally:
+                root_block = f.read(root_size)
