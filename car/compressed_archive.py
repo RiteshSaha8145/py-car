@@ -106,7 +106,7 @@ class CARv1Writer(AbstractContextManager):
         self.bufferedWriter.close()
         return True
 
-    def __gen_cid(self, data: bytes, codec: str) -> CID:
+    def _gen_cid(self, data: bytes, codec: str) -> CID:
         """
         Generate a CID for the given data.
 
@@ -120,7 +120,7 @@ class CARv1Writer(AbstractContextManager):
         hash_value: bytes = multihash.digest(data, "sha2-256")
         return CID("base32", version=1, codec=codec, digest=hash_value)
 
-    def __get_block(self, cid: CID, data: bytes) -> bytes:
+    def _get_block(self, cid: CID, data: bytes) -> bytes:
         """
         Get a block with the given CID and data.
 
@@ -134,7 +134,7 @@ class CARv1Writer(AbstractContextManager):
         cid = bytes(cid)
         return varint.encode(len(cid) + len(data)) + cid + data
 
-    def __get_pbnode(self, dtype: Data.DataType) -> Tuple[PBNode, Data]:
+    def _get_pbnode(self, dtype: Data.DataType) -> Tuple[PBNode, Data]:
         """
         Create a PBNode and corresponding UnixFS Data object.
 
@@ -149,7 +149,7 @@ class CARv1Writer(AbstractContextManager):
         unixfs.Type = dtype
         return (pbnode, unixfs)
 
-    def __get_pblink(self, cid: CID, name: str, size: int) -> PBLink:
+    def _get_pblink(self, cid: CID, name: str, size: int) -> PBLink:
         """
         Create a PBLink object.
 
@@ -167,7 +167,7 @@ class CARv1Writer(AbstractContextManager):
         pblink.Tsize = size
         return pblink
 
-    def __serialize_and_write_pbnode(
+    def _serialize_and_write_pbnode(
         self, pbnode: PBNode, unixfs: Data, codec: str = "dag-pb"
     ) -> Tuple[bytes, CID]:
         """
@@ -184,12 +184,12 @@ class CARv1Writer(AbstractContextManager):
         pbnode.Data = unixfs.SerializeToString()
         pbnode_bytes = pbnode.SerializeToString()
 
-        cid = self.__gen_cid(data=pbnode_bytes, codec=codec)
-        pbnode_block = self.__get_block(cid=cid, data=pbnode_bytes)
+        cid = self._gen_cid(data=pbnode_bytes, codec=codec)
+        pbnode_block = self._get_block(cid=cid, data=pbnode_bytes)
         self.bufferedWriter.write(pbnode_block)
         return (pbnode_block, cid)
 
-    def __get_raw_node(self) -> Generator[Tuple[bytes, CID], None, None]:
+    def _get_raw_node(self) -> Generator[Tuple[bytes, CID], None, None]:
         """
         Generate raw node blocks from the input file.
 
@@ -200,20 +200,20 @@ class CARv1Writer(AbstractContextManager):
 
             codec, block = "raw", raw_data
             if self.unixfs:
-                pbnode, unixfs = self.__get_pbnode(dtype=Data.DataType.Raw)
+                pbnode, unixfs = self._get_pbnode(dtype=Data.DataType.Raw)
                 unixfs.Data = raw_data
                 unixfs.blocksizes.extend([len(raw_data)])
                 pbnode.Data = unixfs.SerializeToString()
                 codec, block = "dag-pb", pbnode.SerializeToString()
 
-            cid: CID = self.__gen_cid(data=block, codec=codec)
-            block = self.__get_block(cid=cid, data=block)
+            cid: CID = self._gen_cid(data=block, codec=codec)
+            block = self._get_block(cid=cid, data=block)
 
             self.bufferedWriter.write(block)
 
             yield (block, cid)
 
-    def __get_intermediate_node(self) -> Generator[Tuple[bytes, CID], None, None]:
+    def _get_intermediate_node(self) -> Generator[Tuple[bytes, CID], None, None]:
         """
         Generate intermediate file node blocks from raw node blocks.
 
@@ -221,50 +221,50 @@ class CARv1Writer(AbstractContextManager):
             Generator[Tuple[bytes, CID], None, None]: Generator of block data and CIDs.
         """
 
-        pbnode, unixfs = self.__get_pbnode(dtype=Data.DataType.File)
-        for i, (data, cid) in enumerate(self.__get_raw_node()):
-            link = self.__get_pblink(cid=cid, name=f"Chunks{i}", size=len(data))
+        pbnode, unixfs = self._get_pbnode(dtype=Data.DataType.File)
+        for i, (data, cid) in enumerate(self._get_raw_node()):
+            link = self._get_pblink(cid=cid, name=f"Chunks{i}", size=len(data))
             pbnode.Links.extend([link])
             unixfs.blocksizes.extend([len(data)])
 
             if (i + 1) % self.max_children == 0:
-                pbnode_block, cid = self.__serialize_and_write_pbnode(
+                pbnode_block, cid = self._serialize_and_write_pbnode(
                     pbnode=pbnode, unixfs=unixfs
                 )
                 yield (pbnode_block, cid)
-                pbnode, unixfs = self.__get_pbnode(dtype=Data.DataType.File)
+                pbnode, unixfs = self._get_pbnode(dtype=Data.DataType.File)
 
         if len(pbnode.Links) > 0:
-            pbnode_block, cid = self.__serialize_and_write_pbnode(
+            pbnode_block, cid = self._serialize_and_write_pbnode(
                 pbnode=pbnode, unixfs=unixfs
             )
             yield (pbnode_block, cid)
 
-    def __build_dag(self) -> Tuple[CID, int]:
+    def _build_dag(self) -> Tuple[CID, int]:
         """
         Generate the root node by building layers of file nodes.
 
         Returns:
             Tuple[CID, int]: The CID of the root node and the number of layers.
         """
-        parents = [(len(block), cid) for block, cid in self.__get_intermediate_node()]
+        parents = [(len(block), cid) for block, cid in self._get_intermediate_node()]
         layers = int(ceil(log(len(parents), self.max_children)))
 
         for layer in range(layers):
             new_parents = []
             for starting_index in range(0, len(parents), self.max_children):
-                pbnode, unixfs = self.__get_pbnode(dtype=Data.DataType.File)
+                pbnode, unixfs = self._get_pbnode(dtype=Data.DataType.File)
                 for i, (size, cid) in enumerate(
                     islice(parents, starting_index, self.max_children + starting_index)
                 ):
-                    link = self.__get_pblink(
+                    link = self._get_pblink(
                         cid=cid, name=f"File_Layer:{layer}:Chunk{i}", size=size
                     )
 
                     pbnode.Links.extend([link])
                     unixfs.blocksizes.extend([size])
 
-                pbnode_block, new_cid = self.__serialize_and_write_pbnode(
+                pbnode_block, new_cid = self._serialize_and_write_pbnode(
                     pbnode=pbnode, unixfs=unixfs
                 )
                 new_parents.append((len(pbnode_block), new_cid))
@@ -273,23 +273,23 @@ class CARv1Writer(AbstractContextManager):
 
         return parents[0][1]
 
-    def __get_file_node(self) -> CID:
+    def _get_file_node(self) -> Tuple[CID, PBNode]:
         """
         Get the root node for the CARv1 file.
 
         Returns:
             CID: The CID of the root node.
         """
-        file_cid = self.__build_dag()
+        file_cid = self._build_dag()
         size = self.file.bufferedReader.tell()
-        pbnode, unixfs = self.__get_pbnode(dtype=Data.DataType.File)
-        link = self.__get_pblink(
+        pbnode, unixfs = self._get_pbnode(dtype=Data.DataType.File)
+        link = self._get_pblink(
             cid=file_cid, name=self.file.metadata["name"], size=size
         )
         pbnode.Links.extend([link])
         unixfs.blocksizes.extend([size])
-        _, root_cid = self.__serialize_and_write_pbnode(pbnode=pbnode, unixfs=unixfs)
-        return root_cid
+        _, root_cid = self._serialize_and_write_pbnode(pbnode=pbnode, unixfs=unixfs)
+        return (root_cid, pbnode)
 
     def get_car(self) -> CID:
         """
@@ -298,7 +298,7 @@ class CARv1Writer(AbstractContextManager):
         Returns:
             CID: The CID of the root node.
         """
-        cid = self.__get_file_node()
+        cid = self._get_file_node()
         encoded_root_node = dag_cbor.encode({"roots": [cid], "version": 1})
         header = varint.encode(len(encoded_root_node)) + encoded_root_node
         self.bufferedWriter.flush()
