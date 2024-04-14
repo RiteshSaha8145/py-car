@@ -8,7 +8,7 @@ if __name__ == "__main__":
                 bufferedReader=f, chunkSize=1, metadata={"name": "requirements.txt"}
             ),
             "test.car",
-            unixfs=False,
-            max_children=11000,
+            unixfs=True,
+            max_children=11,
         ) as c:
             c.get_car()
