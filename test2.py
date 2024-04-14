@@ -1,5 +1,5 @@
 import dag_cbor
-from protobufs import PBNode
+from protobufs import PBNode, Data
 from multiformats import CID
 
 
@@ -7,7 +7,10 @@ def read_varint(f):
     result = 0
     shift = 0
     while True:
-        byte = f.read(1)[0]
+        byte = f.read(1)
+        if not byte:
+            break
+        byte = byte[0]
         result |= (byte & 0x7F) << shift
         shift += 7
         if not (byte & 0x80):
@@ -22,17 +25,17 @@ def read_varint1(f):
         varint_bytes.extend(byte)
         if not (byte[0] & 0x80):
             break
-    return bytes(varint_bytes)
+    return int(bytes(varint_bytes))
 
 
 if __name__ == "__main__":
-    with open("test.car", "rb") as f:
+    with open("test.car", "rb") as f, open("req.txt", "wb") as out:
         header_size = read_varint(f)
         header_bytes = f.read(header_size)
         header = dag_cbor.decode(header_bytes)
 
         r = header["roots"][0]
-        print(r)
+        print(r.encode("base32"))
         root_size = read_varint(f)
         root_block = f.read(root_size)
         while root_block:
@@ -40,12 +43,13 @@ if __name__ == "__main__":
                 cid = root_block[: len(bytes(r))]
                 block = root_block[len(bytes(r)) :]
                 pbnode = PBNode()
-                print(CID.decode(cid))
+                unixfs = Data()
+                print(CID.decode(cid).encode("base32"))
                 pbnode.ParseFromString(block)
-                root_size = read_varint(f)
-                # print(pbnode)
-            except Exception as e:
-                print(e)
+                unixfs.ParseFromString(pbnode.Data)
+            except Exception:
                 continue
             finally:
+                out.write(unixfs.Data if unixfs else block)
+                root_size = read_varint(f)
                 root_block = f.read(root_size)
