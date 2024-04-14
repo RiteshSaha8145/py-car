@@ -273,7 +273,7 @@ class CARv1Writer(AbstractContextManager):
 
         return parents[0][1]
 
-    def _get_file_node(self) -> Tuple[int, CID]:
+    def _get_file_node(self, with_name_node=False) -> Tuple[int, CID]:
         """
         Get the root node for the CARv1 file.
 
@@ -282,14 +282,15 @@ class CARv1Writer(AbstractContextManager):
         """
         file_cid = self._build_dag()
         size = self.file.bufferedReader.tell()
-        pbnode, unixfs = self._get_pbnode(dtype=Data.DataType.File)
-        link = self._get_pblink(
-            cid=file_cid, name=self.file.metadata["name"], size=size
-        )
-        pbnode.Links.extend([link])
-        unixfs.blocksizes.extend([size])
-        _, root_cid = self._serialize_and_write_pbnode(pbnode=pbnode, unixfs=unixfs)
-        return (size, root_cid)
+        if with_name_node:
+            pbnode, unixfs = self._get_pbnode(dtype=Data.DataType.File)
+            link = self._get_pblink(
+                cid=file_cid, name=self.file.metadata["name"], size=size
+            )
+            pbnode.Links.extend([link])
+            unixfs.blocksizes.extend([size])
+            _, file_cid = self._serialize_and_write_pbnode(pbnode=pbnode, unixfs=unixfs)
+        return (size, file_cid)
 
     def _write_header(self, cid: CID) -> None:
         encoded_root_node = dag_cbor.encode({"roots": [cid], "version": 1})
