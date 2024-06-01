@@ -1,7 +1,7 @@
 from os import walk, path
 from file_types import BinaryFile
 from multiformats import CID  # type: ignore
-from protobufs import Data
+from protobufs import Data  # type: ignore
 from . import CARv1Writer
 
 
