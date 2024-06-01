@@ -33,7 +33,7 @@ pycar utilizes a combination of Protobuf definitions, multihashing algorithms, a
 ```bash
 git clone https://github.com/RiteshSaha8145/py-car.git
 
-pip install pycar
+pip install -e pycar
 ```
 
 ## Usage
