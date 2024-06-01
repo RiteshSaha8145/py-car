@@ -14,6 +14,18 @@ The `pycar` package provides a simple yet powerful API for creating CARv1 files 
 
 For more information about the CARv1 specification, please refer to [CARv1 Specification](https://ipld.io/specs/codecs/car/).
 
+### Features
+- Converts files and folders into CARv1 archives.
+- Supports configurable chunking for large files.
+- Utilizes Protobufs for defining DAG nodes and UnixFS data.
+- Generates CIDs (Content IDs) for each block using multihash.
+- Implements UnixFS data format for enhanced metadata storage.
+- Provides a command-line interface for easy interaction.
+
+### How it Works
+pycar utilizes a combination of Protobuf definitions, multihashing algorithms, and UnixFS data structures to create CARv1 files. It recursively traverses the file system, chunking large files as necessary, and constructing a Directed Acyclic Graph (DAG) representing the file and folder hierarchy. Each node in the DAG contains metadata such as file names, sizes, and CIDs of linked data blocks. Finally, the package serializes the DAG into a CARv1 file format, ready for storage or transmission.
+
+
 #### Video Demo:
 
 
