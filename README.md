@@ -19,6 +19,8 @@ For more information about the CARv1 specification, please refer to [CARv1 Speci
 
 ## Installation
 ```bash
+git clone https://github.com/RiteshSaha8145/py-car.git
+
 pip install pycar
 ```
 
