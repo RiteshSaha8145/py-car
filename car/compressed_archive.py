@@ -27,7 +27,11 @@ class CARv1Writer(AbstractContextManager):
     """
 
     def __init__(
-        self, file: File, name: str, unixfs: bool = False, max_children: int = 1024
+        self,
+        file: Optional[File],
+        name: str,
+        unixfs: bool = False,
+        max_children: int = 1024,
     ):
         """
         Initializes a CARv1Writer object.
@@ -155,6 +159,8 @@ class CARv1Writer(AbstractContextManager):
         Yields:
             Generator[Tuple[bytes, CID], None, None]: Generator of block data and CIDs.
         """
+        if not self.file:
+            return None
         for raw_data in self.file:
 
             codec, block = "raw", raw_data
@@ -232,13 +238,15 @@ class CARv1Writer(AbstractContextManager):
 
         return parents[0][1]
 
-    def _get_file_node(self, with_name_node=False) -> Tuple[int, CID]:
+    def _get_file_node(self, with_name_node=False) -> Optional[Tuple[int, CID]]:
         """
         Get the root node for the CARv1 file.
 
         Returns:
             CID: The CID of the root node.
         """
+        if not self.file:
+            return None
         file_cid = self._build_dag()
         size = self.file.bufferedReader.tell()
         if with_name_node:
@@ -257,13 +265,16 @@ class CARv1Writer(AbstractContextManager):
         self.bufferedWriter.flush()
         prepend_data_to_file(file_name=self.name, data=header)
 
-    def get_car(self) -> CID:
+    def get_car(self) -> Optional[CID]:
         """
         Generate the CARv1 file with the given maximum number of children per node.
 
         Returns:
             CID: The CID of the root node.
         """
-        _, cid = self._get_file_node()
+        node = self._get_file_node()
+        if not node:
+            return None
+        _, cid = node
         self._write_header(cid=cid)
         return cid
