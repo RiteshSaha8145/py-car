@@ -3,14 +3,12 @@ from pycar.file_types import BinaryFile
 import pytest
 
 
-def test_carv1_writer():
+def test_carv1_file_writer():
     try:
-        with open("requirements.txt", "rb") as f:
+        with open("dummy", "rb") as f:
             with CARv1Writer(
-                BinaryFile(
-                    bufferedReader=f, chunkSize=1, metadata={"name": "requirements.txt"}
-                ),
-                "test.car",
+                BinaryFile(bufferedReader=f, chunkSize=1, metadata={"name": "dummy"}),
+                "file.car",
                 unixfs=True,
                 max_children=11,
             ) as c:
