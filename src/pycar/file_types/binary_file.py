@@ -1,4 +1,4 @@
-from abstract.file import File
+from pycar.abstract.file import File
 from typing import BinaryIO, Optional
 
 
