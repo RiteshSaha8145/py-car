@@ -25,7 +25,7 @@ For more information about the CARv1 specification, please refer to [CARv1 Speci
 pycar utilizes a combination of Protobuf definitions, multihashing algorithms, and UnixFS data structures to create CARv1 files. It recursively traverses the file system, chunking large files as necessary, and constructing a Directed Acyclic Graph (DAG) representing the file and folder hierarchy. Each node in the DAG contains metadata such as file names, sizes, and CIDs of linked data blocks. Finally, the package serializes the DAG into a CARv1 file format, ready for storage or transmission.
 
 
-#### Video Demo:
+#### Video Demo: https://www.youtube.com/watch?v=bz316x4HyRU
 
 
 ## Installation
