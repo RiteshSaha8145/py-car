@@ -4,7 +4,7 @@
 
 ## Description
 
-`pycar` is a Python package designed to facilitate the conversion of files and folders into Content Addressable Archive (CARv1) files. The CAR format (Content Addressable aRchives) can be used to store content addressable objects in the form of IPLD block data as a sequence of bytes, typically in a file with a .car filename extension.
+`pycar` is a Python package designed to facilitate the conversion of files and folders into Content Addressable Archive (CARv1) files. Inspired by [js-car](https://github.com/ipld/js-car?tab=readme-ov-file#readme). The CAR format (Content Addressable aRchives) can be used to store content addressable objects in the form of IPLD block data as a sequence of bytes, typically in a file with a .car filename extension.
 
 The CAR format serves as a serialized representation of any IPLD DAG (graph) as the concatenation of its blocks, plus a header that describes the graphs in the file via root CIDs. While the requirement for the blocks in a CAR to form coherent DAGs is not strict, the CAR format may also be used to store arbitrary IPLD blocks.
 
