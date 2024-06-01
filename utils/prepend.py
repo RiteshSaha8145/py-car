@@ -1,5 +1,5 @@
-from tempfile import NamedTemporaryFile
-from shutil import copyfileobj, move
+from tempfile import NamedTemporaryFile  # type: ignore
+from shutil import copyfileobj, move  # type: ignore
 
 
 def prepend_data_to_file(file_name: str, data: bytes) -> None:

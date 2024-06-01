@@ -5,50 +5,9 @@ from multiformats import CID, multihash, varint
 from typing import BinaryIO, Optional, Type, Tuple, Generator
 from types import TracebackType
 import dag_cbor
-from collections.abc import Iterator
 from utils import prepend_data_to_file
 from itertools import islice
 from math import log, ceil
-
-
-class CARv1Reader(AbstractContextManager, Iterator):
-    """
-    Context manager for reading data from a CARv1 file.
-
-    Args:
-        file (str): The path to the CARv1 file to read from.
-
-    Attributes:
-        file (str): The path to the CARv1 file being read from.
-        bufferedReader (BinaryIO): The buffered reader for the CARv1 file.
-    """
-
-    def __init__(self, file: str):
-        self.file = file
-        self.bufferedReader = open(file, "rb")
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-        /,
-    ) -> Optional[bool]:
-        """
-        Exit the context manager and close the buffered reader.
-
-        Args:
-            exc_type (Optional[Type[BaseException]]): The type of the exception, if any.
-            exc_value (Optional[BaseException]): The exception value, if any.
-            traceback (Optional[TracebackType]): The traceback, if any.
-
-        Returns:
-            Optional[bool]: True if the buffered reader was closed successfully, False otherwise.
-        """
-        if self.bufferedReader:
-            self.bufferedReader.close()
-            return True
-        return False
 
 
 class CARv1Writer(AbstractContextManager):

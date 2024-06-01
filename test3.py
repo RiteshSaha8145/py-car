@@ -8,4 +8,4 @@ if __name__ == "__main__":
         unixfs=True,
         max_children=11,
     ) as c:
-        cid = folder_to_dag(car_writer=c, folder_path="./testpp", chunk_size=242144)
+        cid = folder_to_dag(car_writer=c, folder_path="./car", chunk_size=242144)
