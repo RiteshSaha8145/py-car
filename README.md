@@ -14,6 +14,7 @@ The `pycar` package provides a simple yet powerful API for creating CARv1 files 
 
 For more information about the CARv1 specification, please refer to [CARv1 Specification](https://ipld.io/specs/codecs/car/).
 
+#### Video Demo:
 
 
 ## Installation
@@ -47,3 +48,11 @@ with open("dummy_file_path", "rb") as f:
             cid = car.get_car()
     print("CARv1 CID:", cid)
 ```
+
+### Example Merkle-DAGs generated with this module
+
+#### A pure text file:
+[![txt-dag.png](https://i.postimg.cc/fLNFWQD0/txt-dag.png)](https://postimg.cc/PLSKKcLt)
+
+#### A DNA sequence:
+[![dna-dag.png](https://i.postimg.cc/t4LR5JNQ/dna-dag.png)](https://postimg.cc/rDNLy8HQ)
