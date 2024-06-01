@@ -27,6 +27,9 @@ pycar utilizes a combination of Protobuf definitions, multihashing algorithms, a
 
 #### Video Demo: https://www.youtube.com/watch?v=bz316x4HyRU
 
+#### Helpful links:
+[CARv1 Specifications](https://ipld.io/specs/transport/car/carv1/) </br>
+[IPLD Tools](https://ipld.io/tools/)
 
 ## Installation
 ```bash
