@@ -1,10 +1,10 @@
 from abstract import File
-from protobufs import PBNode, PBLink, Data
+from protobufs import PBNode, PBLink, Data  # type: ignore
 from contextlib import AbstractContextManager
-from multiformats import CID, multihash, varint
+from multiformats import CID, multihash, varint  # type: ignore
 from typing import BinaryIO, Optional, Type, Tuple, Generator
 from types import TracebackType
-import dag_cbor
+import dag_cbor  # type: ignore
 from utils import prepend_data_to_file
 from itertools import islice
 from math import log, ceil
