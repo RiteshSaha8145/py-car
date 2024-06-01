@@ -39,3 +39,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "pycar" = ["py.typed"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

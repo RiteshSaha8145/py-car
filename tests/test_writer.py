@@ -1,5 +1,5 @@
-from pycar.src.car import CARv1Writer
-from pycar.src.file_types import BinaryFile
+from pycar.car import CARv1Writer
+from pycar.file_types import BinaryFile
 import pytest
 
 

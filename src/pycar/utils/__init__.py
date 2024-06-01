@@ -1,3 +1,3 @@
-from pycar.prepend import prepend_data_to_file
+from pycar.utils.prepend import prepend_data_to_file
 
 __all__ = ["prepend_data_to_file"]
