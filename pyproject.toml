@@ -39,6 +39,3 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "pycar" = ["py.typed"]
-"verifier.nzs_3101.cover_specs" = ["**/*.csv"]
-"verifier.as_3600.cover_specs" = ["*.csv"]
-"verifier.aisc_360_16.compression_specs" = ["*.xlsx"]

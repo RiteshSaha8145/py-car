@@ -1,4 +1,4 @@
-from car import folder_to_dag, CARv1Writer
+from pycar.car import folder_to_dag, CARv1Writer
 
 
 if __name__ == "__main__":
